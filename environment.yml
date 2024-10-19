@@ -1,0 +1,11 @@
+name: text-detection-demo
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - pytorch
+  - torchvision
+  - flask
