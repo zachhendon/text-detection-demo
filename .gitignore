@@ -2,3 +2,4 @@ __pycache__
 .vscode
 *.jpg
 client/node_modules
+*.pth

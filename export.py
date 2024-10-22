@@ -7,7 +7,7 @@ mounts = modal.Mount.from_local_file("model.pth", remote_path="/root/model.pth")
 volume = modal.Volume.from_name("model-export", create_if_missing=True)
 app = modal.App("model-export")
 
-@app.function(image=pytorch_image, mounts=[mounts], volumes={"/models": volume}, gpu="L4")
+@app.function(image=pytorch_image, mounts=[mounts], volumes={"/models": volume}, gpu="A100")
 def export():
     print(os.listdir("."))
     import torch
