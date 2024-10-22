@@ -18,7 +18,7 @@ with websocket_image.imports():
     from PIL import Image
 
 
-@app.function(image=pytorch_image, volumes={"/models": model_volume}, gpu="A100")
+@app.function(image=pytorch_image, volumes={"/models": model_volume}, gpu="L4")
 @modal.asgi_app()
 def endpoint():
     from fastapi import FastAPI, WebSocket
