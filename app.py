@@ -1,8 +1,6 @@
 import modal
 import io
 import base64
-import time
-import sys
 
 
 app = modal.App("text-detection-demo")
@@ -69,7 +67,7 @@ def endpoint():
             padding=1,
         ).squeeze(0)
         binary = (blurred > threshold).to(dtype=torch.uint8) * 255
-        binary = torchvision.transforms.Resize((640, 480))(binary).permute(0, 2, 1)
+        binary = torchvision.transforms.Resize((480, 640))(binary)
         binary_image = torchvision.transforms.ToPILImage()(binary)
         buffer = io.BytesIO()
         binary_image.save(buffer, format="JPEG")
