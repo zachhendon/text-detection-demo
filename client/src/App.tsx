@@ -1,30 +1,51 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import "./App.css";
 
 function App() {
-  const openWebsocket = (event: WebSocketEventMap["open"]): void => {
-    console.log("Started")
-    console.log(event);
-  }
-  const updateMaskCanvas = (event: WebSocketEventMap["message"]): void => {
-    if (!canvasCtxRef.current || !image) return;
-    const context = canvasCtxRef.current;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const imageRef = useRef<HTMLImageElement>(new Image(640, 480));
+  const maskRef = useRef<HTMLCanvasElement | null>(null);
+  const maskCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const frameIdRef = useRef<number | null>(null);
+  const previousTimeRef = useRef<number>(0);
+  const intervalRef = useRef<number>(1000 / 30);
 
-    image.src = `data:image/jpg;base64,${event.data.slice(
+  const socketUrl =
+    "wss://zachhendon--text-detection-demo-endpoint.modal.run/ws";
+
+  const animate = (currentTime: number): void => {
+    const deltaTime = currentTime - previousTimeRef.current;
+
+    if (deltaTime >= intervalRef.current) {
+      captureFrame();
+      previousTimeRef.current = currentTime;
+    }
+
+    frameIdRef.current = requestAnimationFrame(animate);
+  };
+
+  const updateMaskCanvas = (event: WebSocketEventMap["message"]): void => {
+    if (!maskRef.current ||!imageRef.current) return;
+
+    imageRef.current.src = `data:image/jpg;base64,${event.data.slice(
       2,
       event.data.length - 1
     )}`;
-    image.onload = () => {
-      context.drawImage(image, 0, 0);
+    imageRef.current.onload = () => {
+      if (!maskCtxRef.current) return;
+      maskCtxRef.current.drawImage(imageRef.current, 0, 0);
     };
   };
 
   const captureFrame = (): void => {
-    if (!canvasRef.current || !myRef.current || !canvasCtxRef.current) return;
+    if (!canvasRef.current || !videoRef.current || !canvasCtxRef.current)
+      return;
 
     const canvas = canvasRef.current;
-    const video = myRef.current;
+    const video = videoRef.current;
     const context = canvasCtxRef.current;
 
     const width: number = video.videoWidth;
@@ -48,18 +69,16 @@ function App() {
     }, "image/jpeg");
   };
 
-  const socketUrl =
-    "wss://zachhendon--text-detection-demo-endpoint.modal.run/ws";
   const { sendMessage, readyState } = useWebSocket(socketUrl, {
-    onOpen: openWebsocket,
+    share: true,
+    onOpen: (): void => {
+      if (frameIdRef.current) {
+        cancelAnimationFrame(frameIdRef.current);``
+      }
+      frameIdRef.current = requestAnimationFrame(animate);
+    },
     onMessage: updateMaskCanvas,
   });
-
-  const myRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const canvasCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const maskRef = useRef<HTMLCanvasElement | null>(null);
-  const image = new Image(640, 480);
 
   useEffect(() => {
     const getCamera = async (): Promise<void> => {
@@ -68,11 +87,16 @@ function App() {
           video: { width: 640, height: 480 },
         });
         stream.getVideoTracks();
-        if (myRef.current) {
-          myRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
         }
-        if (canvasRef.current && myRef.current) {
+        if (canvasRef.current && videoRef.current) {
           canvasCtxRef.current = canvasRef.current.getContext("2d");
+        }
+        if (maskRef.current) {
+          maskRef.current.width = 640;
+          maskRef.current.height = 480;
+          maskCtxRef.current = maskRef.current.getContext("2d");
         }
       } catch (vent) {
         console.log("Error: no camera found on this device");
@@ -93,12 +117,12 @@ function App() {
     <div>
       <p>The WebSocket is currently {connectionStatus}</p>
       <video
-        ref={myRef}
+        ref={videoRef}
         autoPlay
         style={{ width: "640px", height: "480px" }}
       ></video>
       <button onClick={captureFrame}>CLICK</button>
-      <canvas ref={canvasRef} style={{ width: "640px", height: "480px" }} />
+      <canvas ref={canvasRef} style={{ width: "640px", height: "480px", display: "none" }} />
       <canvas ref={maskRef} style={{ width: "640px", height: "480px" }} />
     </div>
   );
